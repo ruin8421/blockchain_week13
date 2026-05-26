@@ -1,0 +1,22 @@
+{
+  "name": "chaingive-contracts",
+  "version": "1.0.0",
+  "description": "ChainGive 블록체인 기부 플랫폼 스마트 컨트랙트",
+  "scripts": {
+    "compile":    "hardhat compile",
+    "test":       "hardhat test",
+    "coverage":   "hardhat coverage",
+    "node":       "hardhat node",
+    "deploy:local":   "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "dotenv": "^16.4.0"
+  }
+}

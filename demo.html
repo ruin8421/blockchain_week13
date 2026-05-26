@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChainGive — 투명한 기부 플랫폼 데모</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg:      #0b1120;
+    --surface: #111827;
+    --card:    #1a2236;
+    --border:  #1f2f4a;
+    --teal:    #2dd4bf;
+    --pink:    #f43f5e;
+    --gold:    #f59e0b;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --green:   #10b981;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── 헤더 ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-size: 22px; font-weight: 700; color: var(--teal); letter-spacing: -0.5px; }
+  .logo span { color: var(--pink); }
+  .wallet-btn {
+    background: linear-gradient(135deg, var(--teal), #14b8a6);
+    color: #0b1120;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    transition: opacity 0.2s;
+  }
+  .wallet-btn:hover { opacity: 0.85; }
+  .wallet-addr {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--teal);
+    background: rgba(45,212,191,0.1);
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(45,212,191,0.3);
+  }
+
+  /* ── 탭 ── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+  }
+  .tab {
+    padding: 14px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── 레이아웃 ── */
+  .main { padding: 32px; max-width: 1200px; margin: 0 auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── 카드 ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+
+  /* ── 캠페인 카드 ── */
+  .campaigns-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+  .campaign-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+    cursor: pointer;
+  }
+  .campaign-card:hover { transform: translateY(-4px); border-color: var(--teal); }
+  .campaign-header { padding: 20px; border-bottom: 1px solid var(--border); }
+  .campaign-tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--teal);
+    background: rgba(45,212,191,0.1);
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .campaign-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .campaign-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .campaign-body { padding: 20px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+  .progress-bar { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 16px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), #14b8a6); border-radius: 99px; transition: width 0.8s ease; }
+  .campaign-meta { display: flex; gap: 16px; font-size: 12px; color: var(--muted); }
+  .donate-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px;
+    background: rgba(45,212,191,0.1);
+    border: 1px solid rgba(45,212,191,0.3);
+    color: var(--teal);
+    border-radius: 10px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .donate-btn:hover { background: var(--teal); color: #0b1120; }
+
+  /* ── 트랜잭션 로그 ── */
+  .tx-log {
+    background: #050d1a;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    height: 260px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .tx-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .tx-item:last-child { border-bottom: none; }
+  .tx-icon { font-size: 16px; flex-shrink: 0; }
+  .tx-content { flex: 1; }
+  .tx-hash { color: var(--teal); cursor: pointer; }
+  .tx-hash:hover { text-decoration: underline; }
+  .tx-detail { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .tx-time { color: var(--muted); font-size: 10px; flex-shrink: 0; }
+
+  /* ── 마일스톤 ── */
+  .milestones { display: flex; flex-direction: column; gap: 12px; }
+  .milestone-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .ms-status {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .ms-status.pending  { background: rgba(100,116,139,0.2); border: 1px solid var(--muted); }
+  .ms-status.voting   { background: rgba(245,158,11,0.2); border: 1px solid var(--gold); }
+  .ms-status.released { background: rgba(16,185,129,0.2); border: 1px solid var(--green); }
+  .ms-status.rejected { background: rgba(244,63,94,0.2); border: 1px solid var(--pink); }
+  .ms-info { flex: 1; }
+  .ms-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .ms-amount { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .ms-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+  }
+  .ms-badge.pending  { background: rgba(100,116,139,0.2); color: var(--muted); }
+  .ms-badge.voting   { background: rgba(245,158,11,0.15); color: var(--gold); }
+  .ms-badge.released { background: rgba(16,185,129,0.15); color: var(--green); }
+  .ms-badge.rejected { background: rgba(244,63,94,0.15); color: var(--pink); }
+
+  /* ── 투표 패널 ── */
+  .vote-panel {
+    background: var(--surface);
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+  .vote-title { font-size: 14px; font-weight: 700; color: var(--gold); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .vote-bar { height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 12px 0; display: flex; }
+  .vote-for   { background: var(--green); transition: width 0.6s; }
+  .vote-against { background: var(--pink); transition: width 0.6s; }
+  .vote-labels { display: flex; justify-content: space-between; font-size: 12px; }
+  .vote-btns { display: flex; gap: 12px; margin-top: 16px; }
+  .btn-for, .btn-against {
+    flex: 1; padding: 10px;
+    border-radius: 10px; border: none;
+    font-family: inherit; font-weight: 700;
+    cursor: pointer; font-size: 14px;
+    transition: all 0.2s;
+  }
+  .btn-for     { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+  .btn-for:hover   { background: var(--green); color: #0b1120; }
+  .btn-against { background: rgba(244,63,94,0.15); color: var(--pink); border: 1px solid rgba(244,63,94,0.3); }
+  .btn-against:hover { background: var(--pink); color: white; }
+
+  /* ── 폼 ── */
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; display: block; }
+  .form-input, .form-textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--teal); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .submit-btn {
+    width: 100%; padding: 12px;
+    background: linear-gradient(135deg, var(--teal), #14b8a6);
+    color: #0b1120;
+    border: none; border-radius: 10px;
+    font-family: inherit; font-weight: 700;
+    cursor: pointer; font-size: 15px;
+    transition: opacity 0.2s;
+  }
+  .submit-btn:hover { opacity: 0.85; }
+
+  /* ── 통계 카드 ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--teal); font-family: 'JetBrains Mono', monospace; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── 토스트 ── */
+  .toast {
+    position: fixed; bottom: 32px; right: 32px;
+    background: var(--card); border: 1px solid var(--teal);
+    color: var(--text); padding: 14px 20px;
+    border-radius: 12px; font-size: 14px;
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s; z-index: 999;
+    max-width: 340px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--pink); }
+
+  /* ── AI 분석 ── */
+  .ai-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+    color: var(--gold); font-size: 12px; font-weight: 700;
+    padding: 4px 12px; border-radius: 99px;
+  }
+  .ai-result {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-top: 16px;
+    font-size: 14px; line-height: 1.7; color: var(--text);
+  }
+  .score-bar { display: flex; gap: 4px; margin: 12px 0; }
+  .score-seg { height: 8px; border-radius: 99px; flex: 1; }
+  .score-seg.filled-high { background: var(--green); }
+  .score-seg.filled-mid  { background: var(--gold); }
+  .score-seg.filled-low  { background: var(--border); }
+
+  /* ── 섹션 제목 ── */
+  .section-title { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2,1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<header>
+  <div class="logo">Chain<span>Give</span></div>
+  <button class="wallet-btn" id="connectWallet" onclick="connectWallet()">🦊 MetaMask 연결</button>
+</header>
+
+<!-- ── 탭 ── -->
+<div class="tabs">
+  <div class="tab active" onclick="showPage('campaigns', this)">🌐 캠페인</div>
+  <div class="tab" onclick="showPage('tracking', this)">📊 자금 추적</div>
+  <div class="tab" onclick="showPage('create', this)">➕ 캠페인 생성</div>
+  <div class="tab" onclick="showPage('ai', this)">🤖 AI 분석</div>
+</div>
+
+<!-- ── 메인 ── -->
+<div class="main">
+
+  <!-- ① 통계 (공통) -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-campaigns">3</div>
+      <div class="stat-label">활성 캠페인</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-raised">4.2 ETH</div>
+      <div class="stat-label">총 모금액</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-donors">128</div>
+      <div class="stat-label">기부자 수</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-tx">342</div>
+      <div class="stat-label">온체인 트랜잭션</div>
+    </div>
+  </div>
+
+  <!-- ① 페이지: 캠페인 목록 -->
+  <div class="page active" id="page-campaigns">
+    <div class="section-title">활성 캠페인</div>
+    <div class="campaigns-grid" id="campaignsGrid"></div>
+  </div>
+
+  <!-- ② 페이지: 자금 추적 -->
+  <div class="page" id="page-tracking">
+    <div class="grid-2">
+      <div>
+        <div class="section-title">마일스톤 & DAO 투표</div>
+        <div class="card">
+          <div class="card-title"><span class="dot"></span>아프리카 식수 지원 프로젝트</div>
+          <div class="milestones" id="milestoneList"></div>
+
+          <!-- 투표 패널 (Phase 2 진행 중) -->
+          <div class="vote-panel" id="votePanel">
+            <div class="vote-title">⚡ DAO 투표 진행 중 — Phase 2: 정수 시설 설치</div>
+            <div style="font-size:13px; color:var(--muted); margin-bottom:12px;">
+              투표 마감: <strong style="color:var(--text)">2026-06-01 18:00 KST</strong> &nbsp;|&nbsp; 남은 시간: <strong id="countdown" style="color:var(--gold)">5일 14시간</strong>
+            </div>
+            <div class="vote-bar">
+              <div class="vote-for"   id="voteForBar"     style="width:62%"></div>
+              <div class="vote-against" id="voteAgainstBar" style="width:38%"></div>
+            </div>
+            <div class="vote-labels">
+              <span style="color:var(--green)">✅ 찬성 <strong id="voteForPct">62%</strong> (0.62 ETH)</span>
+              <span style="color:var(--pink)">❌ 반대 <strong id="voteAgainstPct">38%</strong> (0.38 ETH)</span>
+            </div>
+            <div class="vote-btns" id="voteBtns">
+              <button class="btn-for"     onclick="castVote(true)">👍 찬성 투표</button>
+              <button class="btn-against" onclick="castVote(false)">👎 반대 투표</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">온체인 트랜잭션 로그</div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--pink)"></span>실시간 블록체인 이벤트</div>
+          <div class="tx-log" id="txLog"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 페이지: 캠페인 생성 -->
+  <div class="page" id="page-create">
+    <div style="max-width:560px; margin:0 auto;">
+      <div class="section-title">새 캠페인 만들기</div>
+      <div class="card">
+        <div class="form-group">
+          <label class="form-label">캠페인 제목</label>
+          <input class="form-input" id="inp-title" placeholder="예: 부산 노인 급식 지원 프로젝트" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">캠페인 설명</label>
+          <textarea class="form-textarea" id="inp-desc" placeholder="무엇을 위한 캠페인인지 상세히 설명해 주세요..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">목표 금액 (ETH)</label>
+          <input class="form-input" id="inp-goal" type="number" placeholder="0.5" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">모금 기간 (일)</label>
+          <input class="form-input" id="inp-days" type="number" placeholder="30" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">마일스톤 (쉼표로 구분)</label>
+          <input class="form-input" id="inp-ms" placeholder="Phase 1: 기자재 구매, Phase 2: 설치, Phase 3: 운영" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">증빙 서류 (IPFS 업로드 시뮬레이션)</label>
+          <input class="form-input" type="file" accept=".pdf,.jpg,.png" onchange="simulateIPFS(this)" />
+          <div id="ipfs-result" style="font-size:12px; color:var(--teal); margin-top:6px; font-family:'JetBrains Mono',monospace;"></div>
+        </div>
+        <button class="submit-btn" onclick="createCampaign()">🚀 스마트 컨트랙트에 캠페인 생성</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ 페이지: AI 분석 -->
+  <div class="page" id="page-ai">
+    <div style="max-width:700px; margin:0 auto;">
+      <div class="section-title">🤖 Claude AI 캠페인 분석</div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--gold)"></span>신뢰도 자동 분석 (Claude API)</div>
+        <div class="form-group">
+          <label class="form-label">분석할 캠페인 선택</label>
+          <select class="form-input" id="ai-campaign">
+            <option>아프리카 식수 지원 프로젝트</option>
+            <option>서울 무료 급식 확대 캠페인</option>
+            <option>해양 쓰레기 수거 로봇 개발</option>
+          </select>
+        </div>
+        <button class="submit-btn" onclick="runAIAnalysis()" style="background: linear-gradient(135deg,#f59e0b,#d97706);">
+          ✨ AI 신뢰도 분석 실행
+        </button>
+        <div id="ai-output" style="display:none">
+          <div class="ai-result" id="ai-result-text"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ────────────────────────────────────────────────────────────────
+//  상태
+// ────────────────────────────────────────────────────────────────
+let walletConnected = false;
+let walletAddress   = "";
+let voteFor = 62, voteAgainst = 38;
+let userVoted = false;
+
+const CAMPAIGNS = [
+  {
+    tag:     "식수 지원",
+    title:   "아프리카 식수 지원 프로젝트",
+    desc:    "케냐 농촌 3개 마을에 정수 시설을 설치하여 깨끗한 식수를 제공합니다.",
+    goal:    1.0,
+    raised:  0.78,
+    donors:  54,
+    days:    12,
+    progress: 78,
+  },
+  {
+    tag:     "급식 지원",
+    title:   "서울 무료 급식 확대 캠페인",
+    desc:    "서울 노원구 독거노인 200명에게 주 5회 무료 급식을 지원합니다.",
+    goal:    2.0,
+    raised:  2.0,
+    donors:  91,
+    days:    0,
+    progress: 100,
+  },
+  {
+    tag:     "환경",
+    title:   "해양 쓰레기 수거 로봇 개발",
+    desc:    "부산 앞바다 미세 플라스틱을 자율 수거하는 소형 수상 로봇 프로토타입 제작.",
+    goal:    3.0,
+    raised:  1.44,
+    donors:  67,
+    days:    20,
+    progress: 48,
+  },
+];
+
+const MILESTONES = [
+  { title: "Phase 1: 현지 조사 및 기자재 구매", amount: "0.4 ETH", status: "released" },
+  { title: "Phase 2: 정수 시설 설치 공사",      amount: "0.4 ETH", status: "voting"   },
+  { title: "Phase 3: 운영 교육 및 인수인계",     amount: "0.2 ETH", status: "pending"  },
+];
+
+const STATUS_ICON  = { pending: "⏳", voting: "🗳️", released: "✅", rejected: "❌" };
+const STATUS_LABEL = { pending: "대기 중", voting: "투표 중", released: "집행 완료", rejected: "부결" };
+
+const TX_LOG_INIT = [
+  { icon:"💰", hash:"0x4f2a…d38c", desc:"DonationReceived — 0.05 ETH (donor: 0x9f3b…12ac)", time:"방금 전" },
+  { icon:"🗳️", hash:"0x8b1c…a92f", desc:"VoteCast — Phase 2 찬성 (weight: 0.1 ETH)",         time:"3분 전"  },
+  { icon:"🗳️", hash:"0x3e7d…c04a", desc:"VoteCast — Phase 2 찬성 (weight: 0.12 ETH)",        time:"7분 전"  },
+  { icon:"✅", hash:"0xfc88…2b1e", desc:"FundsReleased — Phase 1 0.4 ETH → 0xabc…def1",      time:"2일 전"  },
+  { icon:"🗳️", hash:"0x71aa…9e3d", desc:"MilestoneApproved — Phase 1 (찬성 81%)",             time:"2일 전"  },
+  { icon:"💰", hash:"0x2d55…7f0b", desc:"DonationReceived — 0.1 ETH (donor: 0x44fa…88cc)",   time:"3일 전"  },
+  { icon:"🚀", hash:"0xa3e1…5c2d", desc:"CampaignCreated — 아프리카 식수 지원 프로젝트",        time:"5일 전"  },
+];
+
+// ────────────────────────────────────────────────────────────────
+//  초기화
+// ────────────────────────────────────────────────────────────────
+window.onload = () => {
+  renderCampaigns();
+  renderMilestones();
+  renderTxLog(TX_LOG_INIT);
+};
+
+function renderCampaigns() {
+  const grid = document.getElementById("campaignsGrid");
+  grid.innerHTML = CAMPAIGNS.map(c => `
+    <div class="campaign-card">
+      <div class="campaign-header">
+        <div class="campaign-tag">${c.tag}</div>
+        <div class="campaign-title">${c.title}</div>
+        <div class="campaign-desc">${c.desc}</div>
+      </div>
+      <div class="campaign-body">
+        <div class="progress-label">
+          <span style="color:var(--teal); font-weight:700">${c.raised} ETH</span>
+          <span style="color:var(--muted)">목표 ${c.goal} ETH</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${c.progress}%"></div></div>
+        <div class="campaign-meta">
+          <span>👤 ${c.donors}명</span>
+          <span>${c.days > 0 ? `⏱ ${c.days}일 남음` : "✅ 완료"}</span>
+          <span>📈 ${c.progress}% 달성</span>
+        </div>
+        <button class="donate-btn" onclick="openDonate('${c.title}')">💎 기부하기</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderMilestones() {
+  document.getElementById("milestoneList").innerHTML = MILESTONES.map(m => `
+    <div class="milestone-item">
+      <div class="ms-status ${m.status}">${STATUS_ICON[m.status]}</div>
+      <div class="ms-info">
+        <div class="ms-title">${m.title}</div>
+        <div class="ms-amount">${m.amount}</div>
+      </div>
+      <div class="ms-badge ${m.status}">${STATUS_LABEL[m.status]}</div>
+    </div>
+  `).join("");
+}
+
+function renderTxLog(items) {
+  document.getElementById("txLog").innerHTML = items.map(t => `
+    <div class="tx-item">
+      <div class="tx-icon">${t.icon}</div>
+      <div class="tx-content">
+        <div><span class="tx-hash">${t.hash}</span></div>
+        <div class="tx-detail">${t.desc}</div>
+      </div>
+      <div class="tx-time">${t.time}</div>
+    </div>
+  `).join("");
+}
+
+// ────────────────────────────────────────────────────────────────
+//  지갑 연결
+// ────────────────────────────────────────────────────────────────
+async function connectWallet() {
+  if (typeof window.ethereum !== "undefined") {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      walletAddress = accounts[0];
+      walletConnected = true;
+      document.getElementById("connectWallet").outerHTML =
+        `<div class="wallet-addr">🟢 ${walletAddress.slice(0,6)}…${walletAddress.slice(-4)}</div>`;
+      showToast(`✅ 지갑 연결 완료! ${walletAddress.slice(0,10)}…`);
+    } catch(e) {
+      showToast("❌ 지갑 연결 실패: " + e.message, true);
+    }
+  } else {
+    // 데모 모드: MetaMask 없어도 동작
+    walletAddress   = "0xDemo" + Math.random().toString(16).slice(2,8).toUpperCase();
+    walletConnected = true;
+    document.getElementById("connectWallet").outerHTML =
+      `<div class="wallet-addr">🟢 ${walletAddress.slice(0,10)}…</div>`;
+    showToast("🎭 데모 모드: 지갑 시뮬레이션 연결 완료");
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+//  기부 모달 (간소화)
+// ────────────────────────────────────────────────────────────────
+function openDonate(title) {
+  if (!walletConnected) { showToast("⚠️ 먼저 지갑을 연결해 주세요.", true); return; }
+  const amt = prompt(`💎 "${title}"에 기부할 ETH를 입력하세요 (예: 0.05)`);
+  if (!amt || isNaN(amt) || Number(amt) <= 0) return;
+
+  showToast(`📡 트랜잭션 전송 중…`);
+  setTimeout(() => {
+    const hash = "0x" + Math.random().toString(16).slice(2,10) + "…" + Math.random().toString(16).slice(2,6);
+    addTx({ icon:"💰", hash, desc:`DonationReceived — ${amt} ETH (donor: ${walletAddress.slice(0,10)}…)`, time:"방금 전" });
+    showToast(`✅ ${amt} ETH 기부 완료! TxHash: ${hash}`);
+    // 통계 업데이트
+    const el = document.getElementById("stat-donors");
+    el.textContent = parseInt(el.textContent) + 1;
+  }, 1800);
+}
+
+// ────────────────────────────────────────────────────────────────
+//  DAO 투표
+// ────────────────────────────────────────────────────────────────
+function castVote(support) {
+  if (!walletConnected) { showToast("⚠️ 먼저 지갑을 연결해 주세요.", true); return; }
+  if (userVoted) { showToast("⚠️ 이미 투표하셨습니다.", true); return; }
+
+  userVoted = true;
+  const weight = (Math.random() * 0.1 + 0.02).toFixed(3);
+
+  if (support) {
+    voteFor      = Math.min(99, voteFor + 8);
+    voteAgainst  = 100 - voteFor;
+  } else {
+    voteAgainst  = Math.min(99, voteAgainst + 8);
+    voteFor      = 100 - voteAgainst;
+  }
+
+  document.getElementById("voteForBar").style.width     = voteFor + "%";
+  document.getElementById("voteAgainstBar").style.width = voteAgainst + "%";
+  document.getElementById("voteForPct").textContent     = voteFor + "%";
+  document.getElementById("voteAgainstPct").textContent = voteAgainst + "%";
+
+  document.getElementById("voteBtns").innerHTML =
+    `<div style="font-size:13px; color:var(--muted); padding:8px;">✅ 투표 완료 — 결과가 블록체인에 기록되었습니다.</div>`;
+
+  const hash = "0x" + Math.random().toString(16).slice(2,10) + "…" + Math.random().toString(16).slice(2,6);
+  addTx({ icon:"🗳️", hash, desc:`VoteCast — Phase 2 ${support ? "찬성" : "반대"} (weight: ${weight} ETH)`, time:"방금 전" });
+  showToast(`🗳️ 투표 완료! ${support ? "찬성" : "반대"} (의결권: ${weight} ETH)`);
+}
+
+// ────────────────────────────────────────────────────────────────
+//  캠페인 생성 시뮬레이션
+// ────────────────────────────────────────────────────────────────
+function createCampaign() {
+  if (!walletConnected) { showToast("⚠️ 먼저 지갑을 연결해 주세요.", true); return; }
+  const title = document.getElementById("inp-title").value.trim();
+  const goal  = document.getElementById("inp-goal").value;
+  if (!title || !goal) { showToast("⚠️ 제목과 목표 금액을 입력해 주세요.", true); return; }
+
+  showToast("📡 스마트 컨트랙트에 트랜잭션 전송 중…");
+  setTimeout(() => {
+    const hash = "0x" + Math.random().toString(16).slice(2,10) + "…" + Math.random().toString(16).slice(2,6);
+    addTx({ icon:"🚀", hash, desc:`CampaignCreated — ${title} (goal: ${goal} ETH)`, time:"방금 전" });
+    document.getElementById("stat-campaigns").textContent =
+      parseInt(document.getElementById("stat-campaigns").textContent) + 1;
+    showToast(`✅ 캠페인 "${title}" 생성 완료!`);
+    // 폼 초기화
+    ["inp-title","inp-desc","inp-goal","inp-days","inp-ms"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("ipfs-result").textContent = "";
+  }, 2000);
+}
+
+// ────────────────────────────────────────────────────────────────
+//  IPFS 업로드 시뮬레이션
+// ────────────────────────────────────────────────────────────────
+function simulateIPFS(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById("ipfs-result").textContent = "⏳ IPFS 업로드 중…";
+  setTimeout(() => {
+    const cid = "Qm" + Math.random().toString(36).slice(2,14).toUpperCase() + Math.random().toString(36).slice(2,14);
+    document.getElementById("ipfs-result").textContent = `✅ CID: ${cid}`;
+  }, 1500);
+}
+
+// ────────────────────────────────────────────────────────────────
+//  AI 분석 (Claude API 시뮬레이션)
+// ────────────────────────────────────────────────────────────────
+const AI_RESULTS = {
+  "아프리카 식수 지원 프로젝트": {
+    score: 92,
+    text: `<div class="ai-badge">🤖 Claude AI 분석 결과</div>
+<div class="score-bar">${Array.from({length:10},(_,i)=>`<div class="score-seg ${i<9?'filled-high':'filled-low'}"></div>`).join("")}</div>
+<strong>신뢰도 점수: 92/100</strong><br/><br/>
+✅ <strong>운영 단체:</strong> KIAMBU Water Foundation — 케냐 정부 등록 NGO, 활동 이력 6년 확인<br/>
+✅ <strong>마일스톤 구조:</strong> 3단계 분산 집행으로 리스크 분산 우수<br/>
+✅ <strong>IPFS 증빙:</strong> 현지 사진 12장, 공사 견적서, 법인 등록증 확인<br/>
+⚠️ <strong>주의:</strong> Phase 1 완료 후 현지 실사 보고서가 아직 업로드되지 않았습니다.<br/><br/>
+<em style="color:var(--muted)">Claude가 온체인 데이터와 IPFS 메타데이터를 교차 분석한 결과입니다.</em>`
+  },
+  "서울 무료 급식 확대 캠페인": {
+    score: 88,
+    text: `<div class="ai-badge">🤖 Claude AI 분석 결과</div>
+<div class="score-bar">${Array.from({length:10},(_,i)=>`<div class="score-seg ${i<9?'filled-high':'filled-low'}"></div>`).join("")}</div>
+<strong>신뢰도 점수: 88/100</strong><br/><br/>
+✅ <strong>운영 단체:</strong> 사단법인 노원복지재단 — 서울시 인가 비영리법인<br/>
+✅ <strong>목표 달성:</strong> 2.0 ETH 100% 모금 완료, 집행 예정<br/>
+✅ <strong>수혜 대상 명단:</strong> IPFS에 암호화된 수혜자 리스트 업로드 확인<br/>
+⚠️ <strong>주의:</strong> 급식 단가가 시장 평균 대비 15% 높게 책정되어 있습니다. 추가 소명 권장.<br/><br/>
+<em style="color:var(--muted)">Claude가 온체인 데이터와 IPFS 메타데이터를 교차 분석한 결과입니다.</em>`
+  },
+  "해양 쓰레기 수거 로봇 개발": {
+    score: 71,
+    text: `<div class="ai-badge">🤖 Claude AI 분석 결과</div>
+<div class="score-bar">${Array.from({length:10},(_,i)=>`<div class="score-seg ${i<7?'filled-mid':'filled-low'}"></div>`).join("")}</div>
+<strong>신뢰도 점수: 71/100</strong><br/><br/>
+✅ <strong>기술 문서:</strong> 로봇 설계도(CAD), 예산 명세서 IPFS 업로드 확인<br/>
+⚠️ <strong>운영 단체:</strong> 신규 법인으로 이전 활동 이력 없음<br/>
+⚠️ <strong>기술 실현 가능성:</strong> 목표 스펙 대비 예산이 부족할 수 있습니다<br/>
+🚨 <strong>주의:</strong> 프로토타입 완성 기한이 모금 기간과 동일하여 Phase 1 마일스톤 달성 위험 존재<br/><br/>
+<em style="color:var(--muted)">Claude가 온체인 데이터와 IPFS 메타데이터를 교차 분석한 결과입니다.</em>`
+  }
+};
+
+function runAIAnalysis() {
+  const selected = document.getElementById("ai-campaign").value;
+  const out = document.getElementById("ai-output");
+  const txt = document.getElementById("ai-result-text");
+  out.style.display = "none";
+  txt.innerHTML = "⏳ Claude API 분석 중…";
+  out.style.display = "block";
+
+  setTimeout(() => {
+    txt.innerHTML = AI_RESULTS[selected]?.text || "분석 결과를 불러올 수 없습니다.";
+  }, 2000);
+}
+
+// ────────────────────────────────────────────────────────────────
+//  유틸
+// ────────────────────────────────────────────────────────────────
+function showPage(id, el) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t  => t.classList.remove("active"));
+  document.getElementById("page-" + id).classList.add("active");
+  el.classList.add("active");
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast" + (isError ? " error" : "") + " show";
+  setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function addTx(tx) {
+  const log = document.getElementById("txLog");
+  const div = document.createElement("div");
+  div.className = "tx-item";
+  div.style.animation = "none";
+  div.innerHTML = `
+    <div class="tx-icon">${tx.icon}</div>
+    <div class="tx-content">
+      <div><span class="tx-hash">${tx.hash}</span></div>
+      <div class="tx-detail">${tx.desc}</div>
+    </div>
+    <div class="tx-time">${tx.time}</div>
+  `;
+  log.prepend(div);
+  document.getElementById("stat-tx").textContent =
+    parseInt(document.getElementById("stat-tx").textContent) + 1;
+}
+</script>
+</body>
+</html>
